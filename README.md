@@ -1,6 +1,6 @@
-# water_tracker
+# WaterFlow: трекер воды
 
-A new Flutter project.
+WaterFlow: трекер воды - минималистичный трекер воды с локальным хранением данных и Riverpod.
 
 ## Getting Started
 

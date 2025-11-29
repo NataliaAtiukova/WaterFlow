@@ -1,5 +1,5 @@
 name: water_tracker
-description: Минимальный трекер воды на Flutter с локальным хранением и Riverpod.
+description: "WaterFlow: трекер воды на Flutter с локальным хранением и Riverpod."
 publish_to: "none"
 version: 1.0.0+1
 
