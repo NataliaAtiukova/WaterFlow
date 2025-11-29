@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/body_metrics.dart';
 import '../models/daily_progress.dart';
+import '../models/day_schedule.dart';
 import '../models/drink_entry.dart';
 import '../models/drink_type.dart';
 import '../models/water_settings.dart';
@@ -17,6 +19,8 @@ class DrinksRepository {
   static const _drinkTypesKey = 'drink_types_v1';
   static const _entriesKey = 'drink_entries_v1';
   static const _migrationFlagKey = 'hydration_migrated_v1';
+  static const _bodyMetricsKey = 'body_metrics_v1';
+  static const _scheduleKey = 'day_schedule_v1';
   static const _historyRetentionDays = 30;
 
   Future<WaterSettings> loadSettings() async {
@@ -35,6 +39,40 @@ class DrinksRepository {
 
   Future<void> saveSettings(WaterSettings settings) async {
     await _prefs.setString(_settingsKey, jsonEncode(settings.toJson()));
+  }
+
+  Future<BodyMetrics> loadBodyMetrics() async {
+    final raw = _prefs.getString(_bodyMetricsKey);
+    if (raw == null) {
+      await saveBodyMetrics(BodyMetrics.defaults);
+      return BodyMetrics.defaults;
+    }
+    try {
+      return BodyMetrics.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return BodyMetrics.defaults;
+    }
+  }
+
+  Future<void> saveBodyMetrics(BodyMetrics metrics) async {
+    await _prefs.setString(_bodyMetricsKey, jsonEncode(metrics.toJson()));
+  }
+
+  Future<DaySchedule> loadSchedule() async {
+    final raw = _prefs.getString(_scheduleKey);
+    if (raw == null) {
+      await saveSchedule(DaySchedule.defaultSchedule);
+      return DaySchedule.defaultSchedule;
+    }
+    try {
+      return DaySchedule.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return DaySchedule.defaultSchedule;
+    }
+  }
+
+  Future<void> saveSchedule(DaySchedule schedule) async {
+    await _prefs.setString(_scheduleKey, jsonEncode(schedule.toJson()));
   }
 
   Future<List<DrinkType>> loadDrinkTypes() async {
@@ -123,7 +161,7 @@ class DrinksRepository {
   Future<List<DailyProgress>> loadDailySummaries({
     required int days,
     required int target,
-    required bool countWaterOnly,
+    required CountingMode countingMode,
   }) async {
     final entries = await _loadAllEntries();
     final today = DateUtils.dateOnly(DateTime.now());
@@ -136,7 +174,7 @@ class DrinksRepository {
       final totalVolume =
           dayEntries.fold(0, (sum, e) => sum + e.volumeMl).clamp(0, 1 << 31);
       final effective = dayEntries.fold<int>(0, (sum, e) {
-        if (countWaterOnly && e.drinkTypeId != DrinkType.waterId) {
+        if (!_shouldIncludeEntry(e, countingMode)) {
           return sum;
         }
         return sum + e.effectiveHydrationMl;
@@ -236,6 +274,8 @@ class DrinksRepository {
               dateTime:
                   DateTime(legacy.date.year, legacy.date.month, legacy.date.day),
               effectiveHydrationMl: legacy.effectiveMl,
+              caffeineMg: 0,
+              sugarGr: 0,
             ),
           );
         }
@@ -260,6 +300,8 @@ class DrinksRepository {
               dateTime:
                   DateTime(legacy.date.year, legacy.date.month, legacy.date.day),
               effectiveHydrationMl: legacy.effectiveMl,
+              caffeineMg: 0,
+              sugarGr: 0,
             ),
           );
         }
@@ -282,13 +324,20 @@ class DrinksRepository {
 
   Future<void> _reassignEntries(String fromId, String toId) async {
     final entries = await _loadAllEntries();
-    final updated = entries
-        .map(
-          (e) => e.drinkTypeId == fromId
-              ? e.copyWith(drinkTypeId: toId)
-              : e,
-        )
-        .toList();
+    final types = await loadDrinkTypes();
+    final fallback = types.firstWhere(
+      (t) => t.id == toId,
+      orElse: () => DrinkType.defaultTypes().first,
+    );
+    final updated = entries.map((e) {
+      if (e.drinkTypeId != fromId) return e;
+      final recreated = DrinkEntry.fromDrinkType(
+        type: fallback,
+        volumeMl: e.volumeMl,
+        dateTime: e.dateTime,
+      );
+      return recreated.copyWith(id: e.id);
+    }).toList();
     await _saveEntries(updated);
   }
 
@@ -302,6 +351,17 @@ class DrinksRepository {
     return (jsonDecode(raw) as List)
         .map((e) => DrinkEntry.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  bool _shouldIncludeEntry(DrinkEntry entry, CountingMode countingMode) {
+    switch (countingMode) {
+      case CountingMode.factors:
+        return true;
+      case CountingMode.waterOnly:
+        return entry.drinkTypeId == DrinkType.waterId;
+      case CountingMode.ignoreSugary:
+        return !(entry.drinkTypeId == 'juice' || entry.drinkTypeId == 'soda');
+    }
   }
 }
 

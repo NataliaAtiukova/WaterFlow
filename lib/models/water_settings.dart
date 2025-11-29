@@ -2,6 +2,8 @@ enum MeasurementUnit { milliliters, ounces }
 
 enum ThemePreference { system, light, dark }
 
+enum CountingMode { factors, waterOnly, ignoreSugary }
+
 class WaterSettings {
   const WaterSettings({
     required this.dailyGoal,
@@ -9,7 +11,7 @@ class WaterSettings {
     required this.notificationsEnabled,
     required this.notificationIntervalHours,
     required this.themePreference,
-    this.countOnlyWater = false,
+    this.countingMode = CountingMode.factors,
     this.unit = MeasurementUnit.milliliters,
   });
 
@@ -19,7 +21,7 @@ class WaterSettings {
   final bool notificationsEnabled;
   final int notificationIntervalHours;
   final ThemePreference themePreference;
-  final bool countOnlyWater;
+  final CountingMode countingMode;
 
   WaterSettings copyWith({
     int? dailyGoal,
@@ -28,7 +30,7 @@ class WaterSettings {
     bool? notificationsEnabled,
     int? notificationIntervalHours,
     ThemePreference? themePreference,
-    bool? countOnlyWater,
+    CountingMode? countingMode,
   }) {
     return WaterSettings(
       dailyGoal: dailyGoal ?? this.dailyGoal,
@@ -38,7 +40,7 @@ class WaterSettings {
       notificationIntervalHours:
           notificationIntervalHours ?? this.notificationIntervalHours,
       themePreference: themePreference ?? this.themePreference,
-      countOnlyWater: countOnlyWater ?? this.countOnlyWater,
+      countingMode: countingMode ?? this.countingMode,
     );
   }
 
@@ -49,13 +51,17 @@ class WaterSettings {
         'notificationsEnabled': notificationsEnabled,
         'notificationIntervalHours': notificationIntervalHours,
         'themePreference': themePreference.name,
-        'countOnlyWater': countOnlyWater,
+        'countingMode': countingMode.name,
       };
 
   factory WaterSettings.fromJson(Map<String, dynamic> json) {
     final rawUnit = json['unit'] as String? ?? MeasurementUnit.milliliters.name;
     final rawTheme =
         json['themePreference'] as String? ?? ThemePreference.system.name;
+    final countingModeRaw =
+        json['countingMode'] as String? ?? (json['countOnlyWater'] == true
+            ? CountingMode.waterOnly.name
+            : CountingMode.factors.name);
     return WaterSettings(
       dailyGoal: json['dailyGoal'] as int? ?? 2000,
       quickAddOptions: (json['quickAddOptions'] as List<dynamic>?)
@@ -72,7 +78,10 @@ class WaterSettings {
         (t) => t.name == rawTheme,
         orElse: () => ThemePreference.system,
       ),
-      countOnlyWater: json['countOnlyWater'] as bool? ?? false,
+      countingMode: CountingMode.values.firstWhere(
+        (mode) => mode.name == countingModeRaw,
+        orElse: () => CountingMode.factors,
+      ),
     );
   }
 
@@ -83,6 +92,6 @@ class WaterSettings {
     notificationsEnabled: false,
     notificationIntervalHours: 2,
     themePreference: ThemePreference.system,
-    countOnlyWater: false,
+    countingMode: CountingMode.factors,
   );
 }

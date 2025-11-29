@@ -8,7 +8,9 @@ import '../../providers/drink_types_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/today_drinks_provider.dart';
 import '../widgets/add_water_buttons.dart';
-import '../widgets/progress_circle.dart';
+import '../widgets/animated_progress_liquid.dart';
+import '../widgets/drink_card_today.dart';
+import '../widgets/drink_chip.dart';
 import 'drinks_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
@@ -76,16 +78,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             final animated = TweenAnimationBuilder<double>(
               tween: Tween<double>(begin: _lastPercent, end: currentPercent),
-              duration: const Duration(milliseconds: 500),
-              builder: (context, value, _) => ProgressCircle(
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOut,
+              builder: (context, value, _) => AnimatedProgressLiquid(
                 progress: value,
-                percentageText: '${(value * 100).toStringAsFixed(0)}%',
               ),
               onEnd: () => _lastPercent = currentPercent,
             );
             _lastPercent = currentPercent;
 
             final perDrink = _groupTodayEntries(today.entries, drinkTypes);
+            final modeHint = _countingModeHint(settings.countingMode);
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -100,12 +103,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(child: animated),
-                    const SizedBox(height: 24),
-                    Center(
-                      child: Text(
-                        'Зачтено: ${today.effectiveHydrationMl} мл / ${today.target} мл',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                    const SizedBox(height: 8),
+                    _CaffeineSugarRow(
+                      caffeineMg: today.totalCaffeine,
+                      sugarGr: today.totalSugar,
                     ),
                     const SizedBox(height: 8),
                     Center(
@@ -117,15 +118,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 8),
                     Center(
                       child: Text(
-                        'Дата: ${_formatDate(today.date)}',
+                        'План на сейчас: ${today.plannedHydrationMl} мл',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
-                    if (settings.countOnlyWater)
+                    if (modeHint != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          'В зачёт идёт только вода',
+                          modeHint,
                           textAlign: TextAlign.center,
                           style: Theme.of(context)
                               .textTheme
@@ -134,40 +135,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     const SizedBox(height: 24),
-                    Text(
-                      'Выберите напиток',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 48,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (context, index) {
-                          final drink = drinkTypes[index];
-                          final selected =
-                              drink.id == today.selectedDrinkTypeId;
-                          return ChoiceChip(
-                            label: Text(drink.name),
-                            avatar: CircleAvatar(
-                              backgroundColor: drink.color,
-                              radius: 8,
-                            ),
-                            selected: selected,
-                            onSelected: (_) => ref
-                                .read(todayDrinksProvider.notifier)
-                                .selectDrinkType(drink.id),
-                          );
-                        },
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemCount: drinkTypes.length,
+                    const SizedBox(height: 8),
+                    _PlanDeviationBanner(deviation: today.deviationPercent),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Дата: ${_formatDate(today.date)}',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
+                    if (modeHint != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          modeHint,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Colors.orange),
+                        ),
+                      ),
                     const SizedBox(height: 24),
-                    Text(
-                      'Добавить объём',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    _DrinkChipScroller(
+                      drinkTypes: drinkTypes,
+                      selectedId: today.selectedDrinkTypeId,
+                      onSelect: (id) => ref
+                          .read(todayDrinksProvider.notifier)
+                          .selectDrinkType(id),
                     ),
+                    const SizedBox(height: 24),
                     const SizedBox(height: 12),
                     AddWaterButtons(
                       options: settings.quickAddOptions,
@@ -177,34 +174,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           _showCustomAmountDialog(context, ref),
                     ),
                     const SizedBox(height: 32),
-                    Text(
-                      'Сегодня',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                    const Text('Сегодня',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     if (perDrink.isEmpty)
-                      const Text(
-                        'Добавьте первый напиток — он появится здесь.',
-                      )
+                      const Text('Добавьте первый напиток.')
                     else
                       Column(
                         children: [
                           for (final summary in perDrink)
-                            ListTile(
-                              dense: true,
-                              leading: CircleAvatar(
-                                backgroundColor: summary.type.color,
-                                child: Text(
-                                  summary.type.name.isNotEmpty
-                                      ? summary.type.name.characters.first
-                                      : '?',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                              title: Text(summary.type.name),
-                              subtitle: Text(
-                                  '${summary.totalVolume} мл · зачтено ${summary.effectiveVolume} мл'),
-                            ),
+                            DrinkCardToday(summary: summary),
                         ],
                       ),
                   ],
@@ -273,7 +252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return '$day.$month.${date.year}';
   }
 
-  List<_DrinkSummary> _groupTodayEntries(
+  List<DrinkSummary> _groupTodayEntries(
     List<DrinkEntry> entries,
     List<DrinkType> drinkTypes,
   ) {
@@ -282,8 +261,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       name: 'Удалённый напиток',
       colorValue: 0xFF9E9E9E,
       hydrationFactor: 0,
+      caffeineMg: 0,
+      sugarGr: 0,
+      category: DrinkCategory.other,
     );
-    final summaries = <String, _DrinkSummary>{};
+    final summaries = <String, DrinkSummary>{};
     for (final entry in entries) {
       final drink = drinkTypes.firstWhere(
         (t) => t.id == entry.drinkTypeId,
@@ -291,7 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
       final summary = summaries.putIfAbsent(
         drink.id,
-        () => _DrinkSummary(type: drink),
+        () => DrinkSummary(type: drink),
       );
       summary.totalVolume += entry.volumeMl;
       summary.effectiveVolume += entry.effectiveHydrationMl;
@@ -302,10 +284,115 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-class _DrinkSummary {
-  _DrinkSummary({required this.type});
+class _PlanDeviationBanner extends StatelessWidget {
+  const _PlanDeviationBanner({required this.deviation});
 
-  final DrinkType type;
-  int totalVolume = 0;
-  int effectiveVolume = 0;
+  final double deviation;
+
+  @override
+  Widget build(BuildContext context) {
+    String text;
+    Color? color;
+    if (deviation > 0.1) {
+      text = 'Вы опережаете график на ${(deviation * 100).abs().toStringAsFixed(0)}%';
+      color = Colors.green;
+    } else if (deviation < -0.1) {
+      text = 'Вы отстаёте на ${(deviation * -100).toStringAsFixed(0)}%';
+      color = Colors.orange;
+    } else {
+      text = 'Вы идёте по графику';
+      color = Colors.blueGrey;
+    }
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
+    );
+  }
+}
+
+class _DrinkChipScroller extends StatelessWidget {
+  const _DrinkChipScroller({
+    required this.drinkTypes,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final List<DrinkType> drinkTypes;
+  final String selectedId;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 60,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (context, index) {
+          final drink = drinkTypes[index];
+          return DrinkChip(
+            drink: drink,
+            selected: drink.id == selectedId,
+            onTap: () => onSelect(drink.id),
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: drinkTypes.length,
+      ),
+    );
+  }
+}
+
+class _CaffeineSugarRow extends StatelessWidget {
+  const _CaffeineSugarRow({
+    required this.caffeineMg,
+    required this.sugarGr,
+  });
+
+  final int caffeineMg;
+  final int sugarGr;
+
+  static const int caffeineLimit = 400;
+  static const int sugarLimit = 50;
+
+  @override
+  Widget build(BuildContext context) {
+    final caffeineText =
+        'Кофеина сегодня: $caffeineMg мг (из $caffeineLimit)';
+    final sugarText = 'Сахара сегодня: $sugarGr г (из $sugarLimit)';
+    final caffeineColor =
+        caffeineMg > caffeineLimit ? Colors.orange : Colors.blueGrey;
+    final sugarColor =
+        sugarGr > sugarLimit ? Colors.orange : Colors.blueGrey;
+    return Column(
+      children: [
+        Text(
+          caffeineText,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: caffeineColor),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          sugarText,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: sugarColor),
+        ),
+      ],
+    );
+  }
+}
+
+String? _countingModeHint(CountingMode mode) {
+  switch (mode) {
+    case CountingMode.factors:
+      return null;
+    case CountingMode.waterOnly:
+      return 'В зачёт идёт только вода';
+    case CountingMode.ignoreSugary:
+      return 'Соки и газировка не увеличивают прогресс';
+  }
 }

@@ -6,6 +6,7 @@ import 'app.dart';
 import 'models/daily_progress.dart';
 import 'models/drink_entry.dart';
 import 'models/drink_type.dart';
+import 'models/water_settings.dart';
 import 'providers/settings_provider.dart';
 import 'services/notification_service.dart';
 import 'services/widget_service.dart';
@@ -34,7 +35,7 @@ Future<void> backgroundCallback(Uri? data) async {
   final entries = await repo.loadEntriesForDay(DateTime.now());
   final totalVolume = entries.fold<int>(0, (sum, e) => sum + e.volumeMl);
   final effective = entries.fold<int>(0, (sum, e) {
-    if (settings.countOnlyWater && e.drinkTypeId != DrinkType.waterId) {
+    if (!_shouldIncludeEntry(e, settings.countingMode)) {
       return sum;
     }
     return sum + e.effectiveHydrationMl;
@@ -59,4 +60,15 @@ Future<void> backgroundCallback(Uri? data) async {
   }
   await WidgetService().updateWidget(updated);
   container.dispose();
+}
+
+bool _shouldIncludeEntry(DrinkEntry entry, CountingMode mode) {
+  switch (mode) {
+    case CountingMode.factors:
+      return true;
+    case CountingMode.waterOnly:
+      return entry.drinkTypeId == DrinkType.waterId;
+    case CountingMode.ignoreSugary:
+      return !(entry.drinkTypeId == 'juice' || entry.drinkTypeId == 'soda');
+  }
 }

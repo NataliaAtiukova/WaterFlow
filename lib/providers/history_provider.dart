@@ -18,7 +18,7 @@ class HistoryNotifier extends AsyncNotifier<List<DailyProgress>> {
     return repo.loadDailySummaries(
       days: _days,
       target: settings.dailyGoal,
-      countWaterOnly: settings.countOnlyWater,
+      countingMode: settings.countingMode,
     );
   }
 
@@ -28,7 +28,7 @@ class HistoryNotifier extends AsyncNotifier<List<DailyProgress>> {
     final history = await repo.loadDailySummaries(
       days: _days,
       target: settings.dailyGoal,
-      countWaterOnly: settings.countOnlyWater,
+      countingMode: settings.countingMode,
     );
     state = AsyncData(history);
   }

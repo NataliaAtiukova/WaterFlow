@@ -41,7 +41,9 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
                   leading: CircleAvatar(backgroundColor: drink.color),
                   title: Text(drink.name),
                   subtitle: Text(
-                    'В зачёт: ${(drink.hydrationFactor * 100).round()}%',
+                    '${_categoryLabel(drink.category)} · '
+                    'В зачёт: ${(drink.hydrationFactor * 100).round()}% · '
+                    'Кофеин: ${drink.caffeineMg} мг · Сахар: ${drink.sugarGr} г',
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -106,6 +108,11 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
     final nameController = TextEditingController(text: drink?.name ?? '');
     double hydrationPercent = (drink?.hydrationFactor ?? 1.0) * 100;
     int colorValue = drink?.colorValue ?? 0xFF2196F3;
+    final caffeineController =
+        TextEditingController(text: (drink?.caffeineMg ?? 0).toString());
+    final sugarController =
+        TextEditingController(text: (drink?.sugarGr ?? 0).toString());
+    DrinkCategory category = drink?.category ?? DrinkCategory.other;
 
     final result = await showDialog<bool>(
       context: context,
@@ -133,6 +140,42 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
                       onChanged: (value) {
                         setState(() => hydrationPercent = value);
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: caffeineController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Кофеин (мг на 250 мл)',
+                        hintText: 'Например, 40',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: sugarController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Сахар (г на 250 мл)',
+                        hintText: 'Например, 20',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<DrinkCategory>(
+                      // ignore: deprecated_member_use
+                      value: category,
+                      items: DrinkCategory.values
+                          .map(
+                            (cat) => DropdownMenuItem(
+                              value: cat,
+                              child: Text(_categoryLabel(cat)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) setState(() => category = value);
+                      },
+                      decoration:
+                          const InputDecoration(labelText: 'Категория'),
                     ),
                     const SizedBox(height: 16),
                     const Text('Цвет'),
@@ -182,8 +225,14 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
 
     if (result != true || !context.mounted) {
       nameController.dispose();
+      caffeineController.dispose();
+      sugarController.dispose();
       return;
     }
+
+    final caffeine =
+        (int.tryParse(caffeineController.text) ?? 0).clamp(0, 1000);
+    final sugar = (int.tryParse(sugarController.text) ?? 0).clamp(0, 200);
 
     final newDrink = DrinkType(
       id: drink?.id ??
@@ -191,10 +240,15 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
       name: nameController.text.trim(),
       colorValue: colorValue,
       hydrationFactor: (hydrationPercent / 100).clamp(0, 1),
+      caffeineMg: caffeine,
+      sugarGr: sugar,
+      category: category,
       isDefault: drink?.isDefault ?? false,
     );
     await ref.read(drinkTypesProvider.notifier).saveDrinkType(newDrink);
     nameController.dispose();
+    caffeineController.dispose();
+    sugarController.dispose();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -216,4 +270,21 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
     0xFF3F51B5,
     0xFF9E9E9E,
   ];
+
+  String _categoryLabel(DrinkCategory category) {
+    switch (category) {
+      case DrinkCategory.water:
+        return 'Вода';
+      case DrinkCategory.caffeinated:
+        return 'Кофеиновые';
+      case DrinkCategory.sugary:
+        return 'Сладкие';
+      case DrinkCategory.sports:
+        return 'Спортивные';
+      case DrinkCategory.alcohol:
+        return 'Алкоголь';
+      case DrinkCategory.other:
+        return 'Другое';
+    }
+  }
 }

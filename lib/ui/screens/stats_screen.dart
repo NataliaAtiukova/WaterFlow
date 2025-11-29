@@ -34,11 +34,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       body: historyAsync.when(
         data: (items) {
           if (items.isEmpty) {
-            return const Center(child: Text('Нет данных для графика'));
+            return const Center(child: Text('Нет данных'));
           }
-          if (_selectedIndex >= items.length) {
-            _selectedIndex = 0;
-          }
+          if (_selectedIndex >= items.length) _selectedIndex = 0;
           final selectedDay = items[_selectedIndex];
           if (_breakdownDate == null ||
               !DateUtils.isSameDay(_breakdownDate, selectedDay.date)) {
@@ -60,119 +58,40 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: 280,
-                    child: BarChart(
-                      BarChartData(
-                        gridData:
-                            const FlGridData(show: true, drawVerticalLine: false),
-                        borderData: FlBorderData(show: false),
-                        barTouchData: BarTouchData(
-                          enabled: true,
-                          handleBuiltInTouches: true,
-                          touchCallback: (event, response) {
-                            if (response?.spot == null) return;
-                            final index = response!.spot!.touchedBarGroupIndex;
-                            if (index == _selectedIndex) return;
-                            setState(() {
-                              _selectedIndex = index;
-                            });
-                            _loadBreakdown(items[index].date);
-                          },
-                        ),
-                        titlesData: FlTitlesData(
-                          leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: true),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                final index = value.toInt();
-                                if (index < 0 || index >= items.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                final date = items[index].date;
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    '${date.day}.${date.month}',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        barGroups: [
-                          for (var i = 0; i < items.length; i++)
-                            BarChartGroupData(
-                              x: i,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: items[i].effectiveMl.toDouble(),
-                                  width: 18,
-                                  borderRadius: BorderRadius.circular(6),
-                                  color: i == _selectedIndex
-                                      ? Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withValues(alpha: 0.4),
-                                ),
-                              ],
-                            ),
-                        ],
-                        maxY: maxY,
-                      ),
-                      swapAnimationDuration: const Duration(milliseconds: 500),
-                    ),
-                  ),
+                  _buildChart(items, maxY),
+                  const SizedBox(height: 24),
+                  _buildDayCards(items),
                   const SizedBox(height: 24),
                   Text(
-                    'Последние дни',
+                    'Распределение (${_formatDate(selectedDay.date)})',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 8),
-                  ...items.map(
-                    (item) => ListTile(
-                      dense: true,
-                      title: Text(item.isToday()
-                          ? 'Сегодня'
-                          : _formatDate(item.date)),
-                      subtitle: Text(
-                        'Зачтено: ${item.effectiveMl} мл / ${item.target} мл · Всего: ${item.totalVolumeMl} мл',
-                      ),
-                      trailing:
-                          Text('${(item.percent * 100).toStringAsFixed(0)}%'),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Распределение: ${selectedDay.isToday() ? 'Сегодня' : _formatDate(selectedDay.date)}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   if (_loadingBreakdown)
                     const Center(child: CircularProgressIndicator())
                   else if (_breakdown.isEmpty)
-                    const Text('Записей за этот день нет.')
-                  else
-                    Column(
-                      children: _buildBreakdownWidgets(
-                        drinkTypes,
-                        _breakdown,
-                        selectedDay,
+                    const Text('Нет данных.')
+                  else ...[
+                    SizedBox(
+                      height: 220,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 4,
+                          centerSpaceRadius: 48,
+                          sections: _buildPieSections(
+                            drinkTypes,
+                            _breakdown,
+                          ),
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    ..._buildBreakdownWidgets(
+                      drinkTypes,
+                      _breakdown,
+                      selectedDay,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -184,11 +103,154 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     );
   }
 
-  double _calculateMaxY(List<DailyProgress> items) {
-    final maxEffective = items
-        .map((e) => e.effectiveMl)
-        .fold<int>(0, (prev, value) => value > prev ? value : prev);
-    return (maxEffective * 1.2).clamp(500, 8000).toDouble();
+  Widget _buildChart(List<DailyProgress> items, double maxY) {
+    return SizedBox(
+      height: 280,
+      child: BarChart(
+        BarChartData(
+          gridData: const FlGridData(show: true, drawVerticalLine: false),
+          borderData: FlBorderData(show: false),
+          barTouchData: BarTouchData(
+            enabled: true,
+            handleBuiltInTouches: true,
+            touchCallback: (event, response) {
+              if (response?.spot == null) return;
+              final index = response!.spot!.touchedBarGroupIndex;
+              if (index == _selectedIndex) return;
+              setState(() {
+                _selectedIndex = index;
+              });
+              _loadBreakdown(items[index].date);
+            },
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: true),
+            ),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= items.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final date = items[index].date;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      '${date.day}.${date.month}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          barGroups: [
+            for (var i = 0; i < items.length; i++)
+              BarChartGroupData(
+                x: i,
+                barRods: [
+                  BarChartRodData(
+                    toY: items[i].effectiveMl.toDouble(),
+                    width: 18,
+                    borderRadius: BorderRadius.circular(6),
+                    color: i == _selectedIndex
+                        ? Colors.blueAccent
+                        : Colors.blueAccent.withValues(alpha: 0.4),
+                  ),
+                ],
+              ),
+          ],
+          maxY: maxY,
+        ),
+        swapAnimationDuration: const Duration(milliseconds: 500),
+      ),
+    );
+  }
+
+  Widget _buildDayCards(List<DailyProgress> items) {
+    return SizedBox(
+      height: 160,
+      child: PageView.builder(
+        controller: PageController(viewportFraction: 0.8, initialPage: 0),
+        onPageChanged: (index) {
+          setState(() => _selectedIndex = index);
+          _loadBreakdown(items[index].date);
+        },
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return AnimatedScale(
+            duration: const Duration(milliseconds: 250),
+            scale: index == _selectedIndex ? 1 : 0.94,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.isToday() ? 'Сегодня' : _formatDate(item.date),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Зачтено: ${item.effectiveMl} мл'),
+                    Text('Всего: ${item.totalVolumeMl} мл'),
+                    const Spacer(),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        '${(item.percent * 100).toStringAsFixed(0)}%',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  List<PieChartSectionData> _buildPieSections(
+    List<DrinkType> drinkTypes,
+    Map<String, DrinkTotals> data,
+  ) {
+    final total = data.values.fold<int>(0, (sum, e) => sum + e.volumeMl);
+    if (total == 0) return [];
+    return data.entries.map((entry) {
+      final drink = drinkTypes.firstWhere(
+        (d) => d.id == entry.key,
+        orElse: () => DrinkType(
+          id: entry.key,
+          name: 'Удалённый',
+          colorValue: 0xFF9E9E9E,
+          hydrationFactor: 0,
+          caffeineMg: 0,
+          sugarGr: 0,
+          category: DrinkCategory.other,
+          isDefault: false,
+        ),
+      );
+      final percent = entry.value.volumeMl / total * 100;
+      return PieChartSectionData(
+        value: percent,
+        title: '${percent.toStringAsFixed(0)}%',
+        color: drink.color,
+        titleStyle: const TextStyle(color: Colors.white, fontSize: 12),
+      );
+    }).toList();
   }
 
   List<Widget> _buildBreakdownWidgets(
@@ -196,7 +258,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     Map<String, DrinkTotals> data,
     DailyProgress day,
   ) {
-    final totalVolume = day.totalVolumeMl;
     final entries = data.entries.toList()
       ..sort((a, b) => b.value.volumeMl.compareTo(a.value.volumeMl));
     return entries.map((entry) {
@@ -204,14 +265,18 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         (d) => d.id == entry.key,
         orElse: () => DrinkType(
           id: entry.key,
-          name: 'Удалённый напиток',
+          name: 'Удалённый',
           colorValue: 0xFF9E9E9E,
           hydrationFactor: 0,
+          caffeineMg: 0,
+          sugarGr: 0,
+          category: DrinkCategory.other,
+          isDefault: false,
         ),
       );
-      final percent = totalVolume == 0
+      final percent = day.totalVolumeMl == 0
           ? 0.0
-          : (entry.value.volumeMl / totalVolume * 100);
+          : (entry.value.volumeMl / day.totalVolumeMl * 100);
       return ListTile(
         dense: true,
         leading: CircleAvatar(
@@ -228,6 +293,13 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         trailing: Text('${percent.toStringAsFixed(0)}%'),
       );
     }).toList();
+  }
+
+  double _calculateMaxY(List<DailyProgress> items) {
+    final maxEffective = items
+        .map((e) => e.effectiveMl)
+        .fold<int>(0, (prev, value) => value > prev ? value : prev);
+    return (maxEffective * 1.2).clamp(500, 8000).toDouble();
   }
 
   Future<void> _loadBreakdown(DateTime date) async {

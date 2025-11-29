@@ -10,6 +10,8 @@ class DrinkEntry {
     required this.volumeMl,
     required this.dateTime,
     required this.effectiveHydrationMl,
+    required this.caffeineMg,
+    required this.sugarGr,
   });
 
   factory DrinkEntry.fromDrinkType({
@@ -26,6 +28,8 @@ class DrinkEntry {
       volumeMl: volumeMl,
       dateTime: timestamp,
       effectiveHydrationMl: hydration,
+      caffeineMg: (type.caffeineMg * volumeMl / 250).round(),
+      sugarGr: (type.sugarGr * volumeMl / 250).round(),
     );
   }
 
@@ -36,6 +40,8 @@ class DrinkEntry {
 
   /// Cached hydrated amount to avoid recalculating with outdated coefficients.
   final int effectiveHydrationMl;
+  final int caffeineMg;
+  final int sugarGr;
 
   DrinkEntry copyWith({
     String? id,
@@ -43,6 +49,8 @@ class DrinkEntry {
     int? volumeMl,
     DateTime? dateTime,
     int? effectiveHydrationMl,
+    int? caffeineMg,
+    int? sugarGr,
   }) {
     return DrinkEntry(
       id: id ?? this.id,
@@ -51,6 +59,8 @@ class DrinkEntry {
       dateTime: dateTime ?? this.dateTime,
       effectiveHydrationMl:
           effectiveHydrationMl ?? this.effectiveHydrationMl,
+      caffeineMg: caffeineMg ?? this.caffeineMg,
+      sugarGr: sugarGr ?? this.sugarGr,
     );
   }
 
@@ -60,6 +70,8 @@ class DrinkEntry {
         'volumeMl': volumeMl,
         'dateTime': dateTime.toIso8601String(),
         'effectiveHydrationMl': effectiveHydrationMl,
+        'caffeineMg': caffeineMg,
+        'sugarGr': sugarGr,
       };
 
   factory DrinkEntry.fromJson(Map<String, dynamic> json) {
@@ -70,6 +82,8 @@ class DrinkEntry {
       dateTime: DateTime.parse(json['dateTime'] as String),
       effectiveHydrationMl: json['effectiveHydrationMl'] as int? ??
           (json['volumeMl'] as int? ?? 0),
+      caffeineMg: json['caffeineMg'] as int? ?? 0,
+      sugarGr: json['sugarGr'] as int? ?? 0,
     );
   }
 }

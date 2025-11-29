@@ -28,6 +28,60 @@ class NotificationService {
 
   Future<void> cancelAll() => _plugin.cancelAll();
 
+  Future<void> showInstantNotification({
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) {
+      await initialize();
+    }
+    await _plugin.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'water_contextual',
+          'Контекстные напоминания',
+          channelDescription: 'Разовые уведомления',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+    );
+  }
+
+  Future<void> scheduleOneShot({
+    required Duration delay,
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) {
+      await initialize();
+    }
+    final now = tz.TZDateTime.now(tz.local);
+    final scheduled = now.add(delay);
+    await _plugin.zonedSchedule(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      title,
+      body,
+      scheduled,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'water_contextual',
+          'Контекстные напоминания',
+          channelDescription: 'Разовые уведомления',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.alarmClock,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: 'context',
+    );
+  }
+
   // Расписание напоминаний до конца дня с заданным интервалом.
   Future<void> scheduleDailyReminders({
     required int intervalHours,

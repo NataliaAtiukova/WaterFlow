@@ -15,16 +15,28 @@ class WaterTrackerApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp(
-      title: 'Трекер воды',
+      title: 'Трекер жидкостей',
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-        brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.lightBlue,
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: Colors.grey[50],
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.cyanAccent,
+          brightness: Brightness.dark,
+        ).copyWith(
+          surface: const Color(0xFF10131c),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0B0E16),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+        ),
       ),
       themeMode: themeMode,
       routes: {
