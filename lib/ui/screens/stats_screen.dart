@@ -8,6 +8,7 @@ import '../../models/drink_type.dart';
 import '../../providers/drink_types_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/yandex_banner.dart';
 
 class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
@@ -31,6 +32,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Статистика')),
+      bottomNavigationBar: const YandexStickyBanner(),
       body: historyAsync.when(
         data: (items) {
           if (items.isEmpty) {

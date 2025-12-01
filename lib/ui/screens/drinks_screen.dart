@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/drink_type.dart';
 import '../../providers/drink_types_provider.dart';
+import '../../widgets/yandex_banner.dart';
 
 class DrinksScreen extends ConsumerStatefulWidget {
   const DrinksScreen({super.key});
@@ -25,6 +26,7 @@ class _DrinksScreenState extends ConsumerState<DrinksScreen> {
         label: const Text('Добавить'),
         icon: const Icon(Icons.add),
       ),
+      bottomNavigationBar: const YandexStickyBanner(),
       body: drinksAsync.when(
         data: (drinks) {
           if (drinks.isEmpty) {

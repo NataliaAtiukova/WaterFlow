@@ -509,6 +509,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.6.1"
+  yandex_mobileads:
+    dependency: "direct main"
+    description:
+      name: yandex_mobileads
+      sha256: "3d9ffaecd15fd363956220c46484b9fdfbbf6ee31505bb0a72e774fb97e18383"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.17.0"
 sdks:
   dart: ">=3.9.0 <4.0.0"
   flutter: ">=3.35.0"

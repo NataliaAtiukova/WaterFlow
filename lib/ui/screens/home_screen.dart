@@ -7,10 +7,12 @@ import '../../models/water_settings.dart';
 import '../../providers/drink_types_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/today_drinks_provider.dart';
+import '../../providers/services_provider.dart';
 import '../widgets/add_water_buttons.dart';
 import '../widgets/animated_progress_liquid.dart';
 import '../widgets/drink_card_today.dart';
 import '../widgets/drink_chip.dart';
+import '../../widgets/yandex_banner.dart';
 import 'drinks_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
@@ -38,19 +40,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.local_drink_outlined),
-            onPressed: () =>
-                Navigator.of(context).pushNamed(DrinksScreen.routeName),
+            onPressed: () => _openScreenWithAd(DrinksScreen.routeName),
           ),
           IconButton(
             icon: const Icon(Icons.bar_chart),
-            onPressed: () =>
-                Navigator.of(context).pushNamed(StatsScreen.routeName),
+            onPressed: () => _openScreenWithAd(StatsScreen.routeName),
           ),
           IconButton(
             icon: const Icon(Icons.history),
-            onPressed: () => Navigator.of(context).pushNamed(
-              HistoryScreen.routeName,
-            ),
+            onPressed: () => _openScreenWithAd(HistoryScreen.routeName),
           ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -60,6 +58,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: const YandexStickyBanner(),
       body: SafeArea(
         child: todayAsync.when(
           data: (today) {
@@ -204,6 +203,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openScreenWithAd(String routeName) async {
+    final interstitial = ref.read(interstitialAdServiceProvider);
+    await interstitial.show();
+    if (!mounted) return;
+    await Navigator.of(context).pushNamed(routeName);
   }
 
   Future<void> _showCustomAmountDialog(

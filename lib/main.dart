@@ -1,20 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:yandex_mobileads/mobile_ads.dart';
 
 import 'app.dart';
+import 'ads/app_open_ad_manager.dart';
+import 'ads/interstitial_service.dart';
 import 'models/daily_progress.dart';
 import 'models/drink_entry.dart';
 import 'models/drink_type.dart';
 import 'models/water_settings.dart';
 import 'providers/settings_provider.dart';
+import 'providers/services_provider.dart';
 import 'services/notification_service.dart';
 import 'services/widget_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.initialize();
+  final appOpenAdManager = AppOpenAdManager(
+    adUnitId: 'R-M-17907836-2',
+    minTimeBetweenDisplays: const Duration(hours: 1),
+  )..start();
+  WidgetsBinding.instance.addPostFrameCallback(
+    (_) => appOpenAdManager.showAdIfAvailable(),
+  );
+  final interstitialAdService = InterstitialAdService(
+    adUnitId: 'R-M-17907836-3',
+  )..load();
   HomeWidget.registerInteractivityCallback(backgroundCallback);
-  runApp(const ProviderScope(child: WaterTrackerApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        appOpenAdManagerProvider.overrideWithValue(appOpenAdManager),
+        interstitialAdServiceProvider.overrideWithValue(interstitialAdService),
+      ],
+      child: const WaterFlowApp(),
+    ),
+  );
 }
 
 @pragma('vm:entry-point')

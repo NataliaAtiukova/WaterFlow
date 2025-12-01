@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/history_provider.dart';
+import '../../widgets/yandex_banner.dart';
 
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
@@ -14,6 +15,7 @@ class HistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('История')),
+      bottomNavigationBar: const YandexStickyBanner(),
       body: historyAsync.when(
         data: (items) {
           if (items.isEmpty) {

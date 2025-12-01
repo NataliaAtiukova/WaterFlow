@@ -8,6 +8,7 @@ import '../../providers/body_metrics_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/hydration_calculator.dart';
+import '../../widgets/yandex_banner.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -87,6 +88,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Настройки')),
+      bottomNavigationBar: const YandexStickyBanner(),
       body: settingsAsync.when(
         data: (_) => metricsAsync.when(
           data: (_) => scheduleAsync.when(
