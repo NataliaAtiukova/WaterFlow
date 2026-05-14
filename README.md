@@ -1,16 +1,33 @@
-# WaterFlow: трекер воды
+# WaterFlow
 
-WaterFlow: трекер воды - минималистичный трекер воды с локальным хранением данных и Riverpod.
+Minimal Flutter water tracker app.
 
-## Getting Started
+## Status
 
-This project is a starting point for a Flutter application.
+Portfolio project.
 
-A few resources to get you started if this is your first Flutter project:
+## Stack
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Flutter
+- Dart
+- Riverpod
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Run locally
+
+1. Clone the repository:
+```bash
+git clone https://github.com/NataliaAtiukova/WaterFlow.git
+cd WaterFlow
+```
+2. Install dependencies:
+```bash
+flutter pub get
+```
+3. Run:
+```bash
+flutter run
+```
+
+## Notes
+
+Main source code is in `lib/`.
